@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Predictive Maintenance Console</title>
+<style>
+:root{--bg:#f6f7f5;--card:#fff;--tx:#1b2320;--mu:#5d6a65;--ln:#dde2df;--ac:#0F6E56;color-scheme:light}
+@media(prefers-color-scheme:dark){:root{--bg:#141917;--card:#1d2420;--tx:#e8ede9;--mu:#9aa8a1;--ln:#2e3833;--ac:#5DCAA5;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;font:14px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--tx);display:grid;grid-template-columns:200px 1fr;min-height:100vh}
+aside{border-right:1px solid var(--ln);padding:16px 10px}aside h1{font-size:15px;margin:0 8px 14px;font-weight:600}
+nav button{display:block;width:100%;text-align:left;background:none;border:0;color:var(--mu);padding:8px 10px;border-radius:6px;font:inherit;cursor:pointer}
+nav button.on{background:var(--card);color:var(--tx);font-weight:600;box-shadow:inset 3px 0 var(--ac)}nav button:focus-visible{outline:2px solid var(--ac)}
+main{padding:20px 24px;min-width:0}h2{font-size:18px;margin:0 0 4px}.sub{color:var(--mu);margin:0 0 16px}
+.badge{display:inline-block;border:1px solid var(--ln);border-radius:12px;padding:1px 10px;color:var(--mu);font-size:12px;margin-left:8px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:8px;padding:14px}.kpis b{display:block;font-size:26px;font-weight:600}.kpis span,.card small{color:var(--mu)}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--ln);border-radius:8px}th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--ln)}th{color:var(--mu);font-weight:500}
+tr.row{cursor:pointer}tr.row:hover{background:var(--bg)}.pill{color:var(--c);border:1px solid var(--c);border-radius:10px;padding:1px 9px;font-size:12px;white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:12px 0}.grid b{font-size:20px;display:block;font-weight:600}
+.cv{height:170px}.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+select,button.b{font:inherit;padding:6px 10px;border:1px solid var(--ln);border-radius:6px;background:var(--card);color:var(--tx);cursor:pointer}
+a{color:var(--ac)}code{background:var(--card);border:1px solid var(--ln);border-radius:4px;padding:0 4px}
+@media(max-width:700px){body{grid-template-columns:1fr}aside{border:0;border-bottom:1px solid var(--ln)}nav{display:flex;flex-wrap:wrap}nav button{width:auto}}
+</style></head><body>
+<aside><h1>Maintenance console</h1><nav>
+<button data-v="overview" class="on">Overview</button><button data-v="detail">Machine detail</button>
+<button data-v="alertsv">Alerts</button><button data-v="models">Models and data</button><button data-v="config">Configuration</button></nav></aside>
+<main>
+<section id="overview"><h2>Equipment health<span class="badge" id="src"></span></h2>
+<p class="sub">Read-only advisory view. Prototype data is simulated; health scores are not calibrated failure probabilities.</p>
+<div class="kpis" id="kpis"></div>
+<table><thead><tr><th>Tag</th><th>Equipment</th><th>Plant</th><th>Health</th><th>Status</th><th>RUL (days)</th></tr></thead><tbody id="mt"></tbody></table></section>
+
+<section id="detail" hidden><h2>Machine detail</h2><p class="sub"><select id="sel" aria-label="Machine"></select></p>
+<div class="grid" id="cards"></div><div class="card" id="act"></div>
+<div class="charts" style="margin-top:12px"><div class="card cv"><canvas id="c1"></canvas></div><div class="card cv"><canvas id="c2"></canvas></div><div class="card cv"><canvas id="c3"></canvas></div></div></section>
+
+<section id="alertsv" hidden><h2>Alerts</h2><p class="sub">Raised when a machine moves to a worse status. Acknowledge after review.</p>
+<table><thead><tr><th>Time</th><th>Tag</th><th>Status</th><th>Detail</th><th></th></tr></thead><tbody id="at"></tbody></table></section>
+
+<section id="models" hidden><h2>Models and data</h2><p class="sub" id="mm"></p>
+<table><thead><tr><th>Dataset</th><th>Use</th><th>In this project</th></tr></thead><tbody>
+<tr><td><a href="https://phm-datasets.s3.amazonaws.com/NASA/4.+Bearings.zip">NASA IMS bearings</a></td><td>Run-to-failure degradation</td><td>Auto-download and <code>ml.ims_demo</code> real-data check</td></tr>
+<tr><td><a href="https://engineering.case.edu/bearingdatacenter">CWRU</a></td><td>Bearing fault classification</td><td>Manual download (link only)</td></tr>
+<tr><td><a href="https://mb.uni-paderborn.de/en/kat/research/bearing-datacenter/data-sets-and-download">Paderborn</a></td><td>Faults under varied conditions</td><td>Manual download (link only)</td></tr>
+<tr><td><a href="https://zenodo.org/records/10868257">Paderborn run-to-failure</a></td><td>Degradation, RUL</td><td>Manual download (link only)</td></tr>
+<tr><td><a href="https://zenodo.org/records/3384388">MIMII / MIMII-DUE</a></td><td>Acoustic anomaly detection</td><td>Manual download (link only)</td></tr>
+<tr><td><a href="https://www.nasa.gov/intelligent-systems-division/discovery-and-systems-health/pcoe/pcoe-data-set-repository/">NASA C-MAPSS</a></td><td>RUL methods (turbofan)</td><td>Manual download (link only)</td></tr></tbody></table></section>
+
+<section id="config" hidden><h2>Configuration</h2><p class="sub">Edit <code>app/config.py</code> and restart. Nothing here writes to a PLC or DCS.</p>
+<div class="card" id="cf"></div></section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const COL=['#0F6E56','#854F0B','#993C1D','#A32D2D'],ACT=['Continue routine monitoring.','Verify the sensor readings and request an engineering review.','Inspect bearing and lubrication condition and plan maintenance.','Follow the plant operating and safety procedures and escalate to engineers now.'];
+let ST=['Normal','Early warning','Maintenance required','Critical'],sel=null,view='overview',ms=[];
+const $=s=>document.querySelector(s),j=(u,o)=>fetch(u,o).then(r=>r.json());
+const pill=s=>`<span class="pill" style="--c:${COL[s]}">${ST[s]}</span>`,f=(v,d=0)=>v==null?'-':(+v).toFixed(d);
+function mk(id,t,c){return new Chart($(id),{type:'line',data:{labels:[],datasets:[{data:[],borderColor:c,pointRadius:0,tension:.3,borderWidth:2}]},options:{animation:false,maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:t}},scales:{x:{display:false}}}})}
+const ch={h:mk('#c1','Health score (0-100)','#A32D2D'),r:mk('#c2','Vibration RMS','#0F6E56'),t:mk('#c3','Bearing temperature (C)','#854F0B')};
+function nav(v){view=v;document.querySelectorAll('section').forEach(e=>e.hidden=e.id!==v);document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));refresh()}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>nav(b.dataset.v));
+$('#sel').onchange=e=>{sel=e.target.value;refresh()};
+async function ack(id){await fetch('/api/alerts/'+id+'/ack',{method:'POST'});refresh()}
+async function refresh(){
+ const [k,m]=await Promise.all([j('/api/kpis'),j('/api/machines')]);ms=m;ST=k.stages;
+ if(!sel){sel=m[0].tag;$('#sel').innerHTML=m.map(x=>`<option value="${x.tag}">${x.tag} - ${x.name}</option>`).join('')}
+ $('#src').textContent=k.source==='sim'?'Simulated data':'External data via /api/ingest';
+ const b=k.by_stage;$('#kpis').innerHTML=[['Machines monitored',k.machines],['Normal',b[0]],['Warning or action',b[1]+b[2]],['Critical',b[3]],['Open alerts',k.active_alerts]].map(([a,c])=>`<div class="card"><b>${c}</b><span>${a}</span></div>`).join('');
+ $('#mt').innerHTML=m.map(x=>{const l=x.latest;return `<tr class="row" onclick="sel='${x.tag}';$('#sel').value=sel;nav('detail')"><td>${x.tag}</td><td>${x.name}</td><td>${x.plant}</td><td>${l?f(l.health):'-'}</td><td>${l?pill(l.stage):'Waiting for data'}</td><td>${l?f(l.rul):'-'}</td></tr>`}).join('');
+ if(view==='detail')await detail();
+ if(view==='alertsv'){const a=await j('/api/alerts');$('#at').innerHTML=a.length?a.map(x=>`<tr><td>${new Date(x.ts*1e3).toLocaleTimeString()}</td><td>${x.tag}</td><td>${pill(x.stage)}</td><td>${x.message}</td><td>${x.acked?'Acknowledged':`<button class="b" onclick="ack(${x.id})">Acknowledge</button>`}</td></tr>`).join(''):'<tr><td colspan="5">No alerts yet. They appear when a machine degrades.</td></tr>'}
+ if(view==='models'){const t=k.metrics;$('#mm').textContent=t.data?`Trained on ${t.data}: fault accuracy ${t.fault_accuracy}, anomaly AUC ${t.anomaly_auc}, RUL error ${t.rul_mae_days} days. These figures do not describe Engro equipment.`:'Models not trained yet.'}
+ if(view==='config')$('#cf').innerHTML=`<p>Data source: <code>${k.source}</code>. Window: ${k.window} samples at ${k.fs} Hz. Status limits (health score): ${k.limits.join(' / ')}.</p><table><thead><tr><th>Tag</th><th>Equipment</th><th>Plant</th><th>Shaft speed</th></tr></thead><tbody>${m.map(x=>`<tr><td>${x.tag}</td><td>${x.name}</td><td>${x.plant}</td><td>${x.rpm} rpm</td></tr>`).join('')}</tbody></table><p>To connect real data, set <code>PM_SOURCE=external</code> and POST readings to <code>/api/ingest</code> from an approved read-only gateway. Plant assignments above are illustrative.</p>`}
+async function detail(){
+ const h=await j(`/api/machines/${sel}/history?n=120`),l=h[h.length-1];if(!l)return;
+ const L=h.map(r=>new Date(r.ts*1e3).toLocaleTimeString());
+ [[ch.h,'health'],[ch.r,'rms'],[ch.t,'temp']].forEach(([c,k])=>{c.data.labels=L;c.data.datasets[0].data=h.map(r=>r[k]);c.update()});
+ $('#cards').innerHTML=[['Anomaly detection',f(l.anomaly*100)+'%','departure from normal'],['Fault classification',l.fault,f(l.fault_conf*100)+'% confidence'],['RUL prediction',f(l.rul)+' days','range '+f(l.rul_lo)+' to '+f(l.rul_hi)],['Health fusion',f(l.health),ST[l.stage]]].map(([a,b,c])=>`<div class="card"><small>${a}</small><b>${b}</b><small>${c}</small></div>`).join('');
+ $('#act').innerHTML=`${pill(l.stage)} <span style="margin-left:8px">Suggested action: ${ACT[l.stage]}</span>`}
+nav('overview');setInterval(refresh,2000);
+</script></body></html>
